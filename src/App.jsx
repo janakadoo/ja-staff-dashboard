@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabase';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line
+} from 'recharts';
 import './index.css';
 
 const exportToCSV = (filename, rows) => {
@@ -31,8 +35,10 @@ const exportToCSV = (filename, rows) => {
   }
 };
 
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
 function App() {
-  const [activeTab, setActiveTab] = useState('attendance');
+  const [activeTab, setActiveTab] = useState('analytics');
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -103,6 +109,90 @@ function App() {
     });
   };
 
+  const handleExport = () => {
+    if (activeTab === 'attendance') {
+      const data = attendance.map(log => ({
+        'Date & Time': formatDate(log.timestamp),
+        'Staff Member': getStaffName(log.staff_id),
+        'Type': log.type,
+        'Reason': log.reason || '',
+        'Location Map': log.lat ? `https://www.google.com/maps/search/?api=1&query=${log.lat},${log.lng}` : ''
+      }));
+      exportToCSV('JA_Staff_Attendance_Report.csv', data);
+    } else if (activeTab === 'visits') {
+      const data = visits.map(v => ({
+        'Staff Member': getStaffName(v.staff_id),
+        'Shop Name': v.shop_name,
+        'Time IN': formatDate(v.time_in),
+        'Time OUT': v.time_out ? formatDate(v.time_out) : 'Ongoing',
+        'Map IN': v.lat_in ? `https://www.google.com/maps/search/?api=1&query=${v.lat_in},${v.lng_in}` : '',
+        'Map OUT': v.lat_out ? `https://www.google.com/maps/search/?api=1&query=${v.lat_out},${v.lng_out}` : ''
+      }));
+      exportToCSV('JA_Staff_Visits_Report.csv', data);
+    } else {
+      exportToCSV('JA_Staff_Analytics_Summary.csv', staffStats);
+    }
+  };
+
+  // Analytics Calculations
+  const staffStats = useMemo(() => {
+    const stats = {};
+    staffList.forEach(s => {
+      stats[s.id] = { name: s.name, workHours: 0, visitHours: 0, visitCount: 0 };
+    });
+
+    visits.forEach(v => {
+      if (stats[v.staff_id]) {
+        stats[v.staff_id].visitCount += 1;
+        if (v.time_in && v.time_out) {
+          const t1 = new Date(v.time_in).getTime();
+          const t2 = new Date(v.time_out).getTime();
+          stats[v.staff_id].visitHours += (t2 - t1) / (1000 * 60 * 60);
+        }
+      }
+    });
+
+    const attByStaffDate = {};
+    attendance.forEach(a => {
+      const dateKey = new Date(a.timestamp).toLocaleDateString();
+      const key = `${a.staff_id}_${dateKey}`;
+      if (!attByStaffDate[key]) attByStaffDate[key] = { staffId: a.staff_id, in: null, out: null };
+      
+      const d = new Date(a.timestamp);
+      if (a.type === 'WORK_IN') {
+        if (!attByStaffDate[key].in || d < attByStaffDate[key].in) attByStaffDate[key].in = d;
+      } else if (a.type === 'WORK_OUT') {
+        if (!attByStaffDate[key].out || d > attByStaffDate[key].out) attByStaffDate[key].out = d;
+      }
+    });
+
+    Object.values(attByStaffDate).forEach(day => {
+      if (day.in && day.out && stats[day.staffId]) {
+        const diff = (day.out.getTime() - day.in.getTime()) / (1000 * 60 * 60);
+        stats[day.staffId].workHours += diff;
+      }
+    });
+
+    return Object.values(stats).map(s => ({
+      'Staff Name': s.name,
+      'Total Work Hours': parseFloat(s.workHours.toFixed(1)),
+      'Total Visit Hours': parseFloat(s.visitHours.toFixed(1)),
+      'Shop Visits': s.visitCount
+    })).sort((a, b) => b['Total Work Hours'] - a['Total Work Hours']);
+  }, [staffList, attendance, visits]);
+
+  const activityData = useMemo(() => {
+    const counts = { 'WORK_IN': 0, 'LEAVE': 0 };
+    attendance.forEach(a => {
+      if (a.type === 'WORK_IN' || a.type === 'LEAVE') counts[a.type]++;
+    });
+    return [
+      { name: 'Worked Days', value: counts['WORK_IN'] },
+      { name: 'Leaves', value: counts['LEAVE'] }
+    ];
+  }, [attendance]);
+
+
   const MapLink = ({ lat, lng }) => {
     if (!lat || !lng) return <span>-</span>;
     const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -125,29 +215,6 @@ function App() {
     return <span className={className}>{text}</span>;
   };
 
-  const handleExport = () => {
-    if (activeTab === 'attendance') {
-      const data = attendance.map(log => ({
-        'Date & Time': formatDate(log.timestamp),
-        'Staff Member': getStaffName(log.staff_id),
-        'Type': log.type,
-        'Reason': log.reason || '',
-        'Location Map': log.lat ? `https://www.google.com/maps/search/?api=1&query=${log.lat},${log.lng}` : ''
-      }));
-      exportToCSV('JA_Staff_Attendance_Report.csv', data);
-    } else {
-      const data = visits.map(v => ({
-        'Staff Member': getStaffName(v.staff_id),
-        'Shop Name': v.shop_name,
-        'Time IN': formatDate(v.time_in),
-        'Time OUT': v.time_out ? formatDate(v.time_out) : 'Ongoing',
-        'Map IN': v.lat_in ? `https://www.google.com/maps/search/?api=1&query=${v.lat_in},${v.lng_in}` : '',
-        'Map OUT': v.lat_out ? `https://www.google.com/maps/search/?api=1&query=${v.lat_out},${v.lng_out}` : ''
-      }));
-      exportToCSV('JA_Staff_Visits_Report.csv', data);
-    }
-  };
-
   if (loading) {
     return (
       <div className="loader-container">
@@ -162,7 +229,7 @@ function App() {
       <header className="header">
         <div>
           <h1>JA Staff Central</h1>
-          <p>Real-time Attendance and Visit Tracking</p>
+          <p>Real-time Attendance, Visits & Analytics</p>
         </div>
       </header>
 
@@ -194,6 +261,12 @@ function App() {
         <div className="tabs-container">
           <div className="tabs">
             <button 
+              className={`tab-button ${activeTab === 'analytics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('analytics')}
+            >
+              📊 Analytics
+            </button>
+            <button 
               className={`tab-button ${activeTab === 'attendance' ? 'active' : ''}`}
               onClick={() => setActiveTab('attendance')}
             >
@@ -212,6 +285,65 @@ function App() {
         </div>
 
         <div className="table-container">
+          {activeTab === 'analytics' && (
+            <div className="analytics-grid">
+              
+              <div className="chart-container">
+                <h3 className="chart-title">Staff Performance (Hours)</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={staffStats}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff22" />
+                    <XAxis dataKey="Staff Name" stroke="#94a3b8" />
+                    <YAxis stroke="#94a3b8" />
+                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
+                    <Legend />
+                    <Bar dataKey="Total Work Hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Total Visit Hours" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-container">
+                <h3 className="chart-title">Attendance vs Leaves</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={activityData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label
+                    >
+                      {activityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="chart-container full-width">
+                <h3 className="chart-title">Shop Visits Summary</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={staffStats}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff22" />
+                    <XAxis dataKey="Staff Name" stroke="#94a3b8" />
+                    <YAxis stroke="#94a3b8" />
+                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
+                    <Legend />
+                    <Line type="monotone" dataKey="Shop Visits" stroke="#f59e0b" strokeWidth={3} dot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+            </div>
+          )}
+
           {activeTab === 'attendance' && (
             <table>
               <thead>
