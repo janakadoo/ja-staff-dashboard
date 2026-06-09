@@ -203,7 +203,7 @@ function App() {
       'Staff Name': s.name,
       'Total Work Hours': parseFloat(s.workHours.toFixed(1)),
       'Total Visit Hours': parseFloat(s.visitHours.toFixed(1)),
-      'Shop Visits': s.visitCount
+      'Visited Shops': s.visitCount
     })).sort((a, b) => b['Total Work Hours'] - a['Total Work Hours']);
   }, [staffList, filteredAttendance, filteredVisits]);
 
@@ -368,7 +368,7 @@ function App() {
                     <Legend />
                     <Bar yAxisId="left" dataKey="Total Work Hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     <Bar yAxisId="left" dataKey="Total Visit Hours" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Line yAxisId="right" type="monotone" dataKey="Shop Visits" stroke="#f59e0b" strokeWidth={3} dot={{ r: 6 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="Visited Shops" stroke="#f59e0b" strokeWidth={3} dot={{ r: 6 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -406,7 +406,7 @@ function App() {
                     <YAxis stroke="#94a3b8" />
                     <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
                     <Legend />
-                    <Line type="monotone" dataKey="Shop Visits" stroke="#f59e0b" strokeWidth={3} dot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="Visited Shops" stroke="#f59e0b" strokeWidth={3} dot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
