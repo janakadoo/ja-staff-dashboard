@@ -100,11 +100,15 @@ function App() {
   const todayStart = new Date();
   todayStart.setHours(0,0,0,0);
   
-  const presentToday = new Set(
+  const presentStaffIds = new Set(
     attendance
       .filter(a => new Date(a.timestamp) >= todayStart && a.type === 'WORK_IN')
       .map(a => a.staff_id)
-  ).size;
+  );
+  
+  const presentToday = presentStaffIds.size;
+  const presentStaffNames = staffList.filter(s => presentStaffIds.has(s.id));
+  const absentStaffNames = staffList.filter(s => !presentStaffIds.has(s.id));
 
   const activeVisits = visits.filter(v => !v.time_out).length;
 
@@ -289,6 +293,23 @@ function App() {
           <div className="summary-content">
             <h3>Active Visits</h3>
             <div className="value">{activeVisits}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="attendance-status-container glass-panel">
+        <div className="status-column present">
+          <h3>Present Today ({presentStaffNames.length})</h3>
+          <div className="staff-tags">
+             {presentStaffNames.length === 0 ? <span className="empty-text">No one is present</span> : 
+               presentStaffNames.map(s => <span key={s.id} className="staff-tag present-tag">{s.name}</span>)}
+          </div>
+        </div>
+        <div className="status-column absent">
+          <h3>Absent Today ({absentStaffNames.length})</h3>
+          <div className="staff-tags">
+             {absentStaffNames.length === 0 ? <span className="empty-text">Everyone is present!</span> : 
+               absentStaffNames.map(s => <span key={s.id} className="staff-tag absent-tag">{s.name}</span>)}
           </div>
         </div>
       </div>
