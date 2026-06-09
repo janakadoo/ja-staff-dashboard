@@ -43,7 +43,8 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filterStaff, setFilterStaff] = useState('ALL');
-  const [filterDate, setFilterDate] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterToDate, setFilterToDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -116,13 +117,17 @@ function App() {
 
   const filteredTableAttendance = attendance.filter(log => {
     const matchStaff = filterStaff === 'ALL' || log.staff_id === filterStaff;
-    const matchDate = filterDate === '' || new Date(log.timestamp).toISOString().split('T')[0] === filterDate;
+    if (!log.timestamp) return false;
+    const logDate = new Date(log.timestamp).toISOString().split('T')[0];
+    const matchDate = logDate >= filterFromDate && logDate <= filterToDate;
     return matchStaff && matchDate;
   });
 
   const filteredTableVisits = visits.filter(v => {
     const matchStaff = filterStaff === 'ALL' || v.staff_id === filterStaff;
-    const matchDate = filterDate === '' || new Date(v.time_in).toISOString().split('T')[0] === filterDate;
+    if (!v.time_in) return false;
+    const logDate = new Date(v.time_in).toISOString().split('T')[0];
+    const matchDate = logDate >= filterFromDate && logDate <= filterToDate;
     return matchStaff && matchDate;
   });
 
@@ -322,17 +327,35 @@ function App() {
               <option value="ALL">All Staff Members</option>
               {staffList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <input 
-              type="date" 
-              value={filterDate} 
-              onChange={e => setFilterDate(e.target.value)} 
-              className="glass-input" 
-            />
-            {(filterStaff !== 'ALL' || filterDate !== '') && (
-              <button onClick={() => { setFilterStaff('ALL'); setFilterDate(''); }} className="clear-btn">
-                ✕ Clear
-              </button>
-            )}
+            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>From:</span>
+              <input 
+                type="date" 
+                value={filterFromDate} 
+                onChange={e => setFilterFromDate(e.target.value)} 
+                className="glass-input" 
+              />
+            </div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <span style={{color: 'var(--text-muted)', fontSize: '0.9rem'}}>To:</span>
+              <input 
+                type="date" 
+                value={filterToDate} 
+                onChange={e => setFilterToDate(e.target.value)} 
+                className="glass-input" 
+              />
+            </div>
+            <button 
+              onClick={() => { 
+                setFilterStaff('ALL'); 
+                const today = new Date().toISOString().split('T')[0];
+                setFilterFromDate(today); 
+                setFilterToDate(today);
+              }} 
+              className="clear-btn"
+            >
+              ✕ Reset
+            </button>
           </div>
         )}
 
