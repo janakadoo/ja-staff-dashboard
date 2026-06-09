@@ -187,11 +187,19 @@ tbody tr:hover {
   text-decoration: underline;
 }
 
-/* Tabs */
+/* Tabs & Actions */
+.tabs-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .tabs {
   display: flex;
   gap: 12px;
-  margin-bottom: 24px;
 }
 
 .tab-button {
@@ -217,6 +225,28 @@ tbody tr:hover {
   border-color: var(--primary-color);
   color: white;
   box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+/* Export Button */
+.export-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.export-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
 /* Loader */

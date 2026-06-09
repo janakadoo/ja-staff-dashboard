@@ -2,6 +2,35 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import './index.css';
 
+const exportToCSV = (filename, rows) => {
+  if (!rows || !rows.length) return;
+  const separator = ',';
+  const keys = Object.keys(rows[0]);
+  const csvContent =
+    keys.join(separator) +
+    '\n' +
+    rows.map(row => {
+      return keys.map(k => {
+        let cell = row[k] === null || row[k] === undefined ? '' : row[k];
+        cell = cell instanceof Date ? cell.toLocaleString() : cell.toString().replace(/"/g, '""');
+        if (cell.search(/("|,|\n)/g) >= 0) cell = `"${cell}"`;
+        return cell;
+      }).join(separator);
+    }).join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState('attendance');
   const [loading, setLoading] = useState(true);
@@ -96,6 +125,29 @@ function App() {
     return <span className={className}>{text}</span>;
   };
 
+  const handleExport = () => {
+    if (activeTab === 'attendance') {
+      const data = attendance.map(log => ({
+        'Date & Time': formatDate(log.timestamp),
+        'Staff Member': getStaffName(log.staff_id),
+        'Type': log.type,
+        'Reason': log.reason || '',
+        'Location Map': log.lat ? `https://www.google.com/maps/search/?api=1&query=${log.lat},${log.lng}` : ''
+      }));
+      exportToCSV('JA_Staff_Attendance_Report.csv', data);
+    } else {
+      const data = visits.map(v => ({
+        'Staff Member': getStaffName(v.staff_id),
+        'Shop Name': v.shop_name,
+        'Time IN': formatDate(v.time_in),
+        'Time OUT': v.time_out ? formatDate(v.time_out) : 'Ongoing',
+        'Map IN': v.lat_in ? `https://www.google.com/maps/search/?api=1&query=${v.lat_in},${v.lng_in}` : '',
+        'Map OUT': v.lat_out ? `https://www.google.com/maps/search/?api=1&query=${v.lat_out},${v.lng_out}` : ''
+      }));
+      exportToCSV('JA_Staff_Visits_Report.csv', data);
+    }
+  };
+
   if (loading) {
     return (
       <div className="loader-container">
@@ -139,18 +191,23 @@ function App() {
       </div>
 
       <div className="glass-panel">
-        <div className="tabs">
-          <button 
-            className={`tab-button ${activeTab === 'attendance' ? 'active' : ''}`}
-            onClick={() => setActiveTab('attendance')}
-          >
-            Attendance Logs
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'visits' ? 'active' : ''}`}
-            onClick={() => setActiveTab('visits')}
-          >
-            Visit Logs
+        <div className="tabs-container">
+          <div className="tabs">
+            <button 
+              className={`tab-button ${activeTab === 'attendance' ? 'active' : ''}`}
+              onClick={() => setActiveTab('attendance')}
+            >
+              Attendance Logs
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'visits' ? 'active' : ''}`}
+              onClick={() => setActiveTab('visits')}
+            >
+              Visit Logs
+            </button>
+          </div>
+          <button className="export-btn" onClick={handleExport}>
+            📥 Download CSV Report
           </button>
         </div>
 
