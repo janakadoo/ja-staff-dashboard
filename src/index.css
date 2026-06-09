@@ -415,9 +415,57 @@ tbody tr:hover {
 }
 
 @media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .header h1 {
+    font-size: 1.8rem;
+  }
+
+  .tabs-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .tab-button {
+    flex: 1;
+    text-align: center;
+  }
+
+  .export-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filters-row > select,
+  .filters-row > div,
+  .filters-row > button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .analytics-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .analytics-grid {
     grid-template-columns: 1fr;
   }
+  
   .attendance-status-container {
     flex-direction: column;
   }
