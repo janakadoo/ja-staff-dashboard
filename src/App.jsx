@@ -39,8 +39,9 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 function App() {
   const [activeTab, setActiveTab] = useState('analytics');
-  const [analyticsMode, setAnalyticsMode] = useState('cumulative');
+  const [analyticsMode, setAnalyticsMode] = useState('monthly');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filterStaff, setFilterStaff] = useState('ALL');
   const [filterDate, setFilterDate] = useState('');
   const [loading, setLoading] = useState(true);
@@ -152,14 +153,18 @@ function App() {
 
   // Analytics Calculations
   const filteredVisits = useMemo(() => {
-    if (analyticsMode === 'cumulative') return visits;
+    if (analyticsMode === 'monthly') {
+      return visits.filter(v => v.time_in && new Date(v.time_in).toISOString().startsWith(selectedMonth));
+    }
     return visits.filter(v => v.time_in && new Date(v.time_in).toISOString().split('T')[0] === selectedDate);
-  }, [visits, analyticsMode, selectedDate]);
+  }, [visits, analyticsMode, selectedDate, selectedMonth]);
 
   const filteredAttendance = useMemo(() => {
-    if (analyticsMode === 'cumulative') return attendance;
+    if (analyticsMode === 'monthly') {
+      return attendance.filter(a => a.timestamp && new Date(a.timestamp).toISOString().startsWith(selectedMonth));
+    }
     return attendance.filter(a => a.timestamp && new Date(a.timestamp).toISOString().split('T')[0] === selectedDate);
-  }, [attendance, analyticsMode, selectedDate]);
+  }, [attendance, analyticsMode, selectedDate, selectedMonth]);
 
   const staffStats = useMemo(() => {
     const stats = {};
@@ -340,15 +345,22 @@ function App() {
                   onChange={e => setAnalyticsMode(e.target.value)} 
                   className="glass-input select"
                 >
-                  <option value="cumulative">Cumulative Analysis (All Time)</option>
+                  <option value="monthly">Monthly Analysis</option>
                   <option value="daily">Daily Analysis</option>
                 </select>
 
-                {analyticsMode === 'daily' && (
+                {analyticsMode === 'daily' ? (
                   <input 
                     type="date" 
                     value={selectedDate} 
                     onChange={e => setSelectedDate(e.target.value)} 
+                    className="glass-input"
+                  />
+                ) : (
+                  <input 
+                    type="month" 
+                    value={selectedMonth} 
+                    onChange={e => setSelectedMonth(e.target.value)} 
                     className="glass-input"
                   />
                 )}
