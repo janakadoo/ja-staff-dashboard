@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabase';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell, LineChart, Line, ComposedChart
 } from 'recharts';
 import './index.css';
 
@@ -357,17 +357,19 @@ function App() {
               <div className="analytics-grid">
                 
                 <div className="chart-container">
-                <h3 className="chart-title">Staff Performance (Hours)</h3>
+                <h3 className="chart-title">Staff Performance (Hours & Visits)</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={staffStats}>
+                  <ComposedChart data={staffStats}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff22" />
                     <XAxis dataKey="Staff Name" stroke="#94a3b8" />
-                    <YAxis stroke="#94a3b8" />
+                    <YAxis yAxisId="left" stroke="#94a3b8" />
+                    <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" />
                     <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
                     <Legend />
-                    <Bar dataKey="Total Work Hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Total Visit Hours" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Bar yAxisId="left" dataKey="Total Work Hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Total Visit Hours" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="Shop Visits" stroke="#f59e0b" strokeWidth={3} dot={{ r: 6 }} />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
 
