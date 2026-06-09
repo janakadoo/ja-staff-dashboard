@@ -119,6 +119,18 @@ function App() {
     });
   };
 
+  const formatDuration = (timeIn, timeOut) => {
+    if (!timeIn || !timeOut) return '-';
+    const t1 = new Date(timeIn).getTime();
+    const t2 = new Date(timeOut).getTime();
+    const diffMins = Math.floor((t2 - t1) / (1000 * 60));
+    if (diffMins < 0) return '-';
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    if (hours === 0) return `${mins} mins`;
+    return `${hours} hrs ${mins} mins`;
+  };
+
   const filteredTableAttendance = attendance.filter(log => {
     const matchStaff = filterStaff === 'ALL' || log.staff_id === filterStaff;
     if (!log.timestamp) return false;
@@ -151,6 +163,7 @@ function App() {
         'Shop Name': v.shop_name,
         'Time IN': formatDate(v.time_in),
         'Time OUT': v.time_out ? formatDate(v.time_out) : 'Ongoing',
+        'Duration': formatDuration(v.time_in, v.time_out),
         'Map IN': v.lat_in ? `https://www.google.com/maps/search/?api=1&query=${v.lat_in},${v.lng_in}` : '',
         'Map OUT': v.lat_out ? `https://www.google.com/maps/search/?api=1&query=${v.lat_out},${v.lng_out}` : ''
       }));
@@ -508,6 +521,7 @@ function App() {
                   <th>Shop Name</th>
                   <th>Time IN</th>
                   <th>Time OUT</th>
+                  <th>Duration</th>
                   <th>Location IN</th>
                   <th>Location OUT</th>
                 </tr>
@@ -521,7 +535,8 @@ function App() {
                       <td style={{fontWeight: 600}}>{getStaffName(visit.staff_id)}</td>
                       <td>{visit.shop_name}</td>
                       <td>{formatDate(visit.time_in)}</td>
-                      <td>{visit.time_out ? formatDate(visit.time_out) : <span style={{color: 'var(--primary-color)'}}>Ongoing</span>}</td>
+                      <td>{visit.time_out ? formatDate(visit.time_out) : <span className="badge visit">Ongoing</span>}</td>
+                      <td><span style={{fontWeight: 500, color: 'var(--warning)'}}>{formatDuration(visit.time_in, visit.time_out)}</span></td>
                       <td><MapLink lat={visit.lat_in} lng={visit.lng_in} /></td>
                       <td><MapLink lat={visit.lat_out} lng={visit.lng_out} /></td>
                     </tr>
