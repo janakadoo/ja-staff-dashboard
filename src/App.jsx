@@ -41,6 +41,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('analytics');
   const [analyticsMode, setAnalyticsMode] = useState('cumulative');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterStaff, setFilterStaff] = useState('ALL');
+  const [filterDate, setFilterDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -111,9 +113,21 @@ function App() {
     });
   };
 
+  const filteredTableAttendance = attendance.filter(log => {
+    const matchStaff = filterStaff === 'ALL' || log.staff_id === filterStaff;
+    const matchDate = filterDate === '' || new Date(log.timestamp).toISOString().split('T')[0] === filterDate;
+    return matchStaff && matchDate;
+  });
+
+  const filteredTableVisits = visits.filter(v => {
+    const matchStaff = filterStaff === 'ALL' || v.staff_id === filterStaff;
+    const matchDate = filterDate === '' || new Date(v.time_in).toISOString().split('T')[0] === filterDate;
+    return matchStaff && matchDate;
+  });
+
   const handleExport = () => {
     if (activeTab === 'attendance') {
-      const data = attendance.map(log => ({
+      const data = filteredTableAttendance.map(log => ({
         'Date & Time': formatDate(log.timestamp),
         'Staff Member': getStaffName(log.staff_id),
         'Type': log.type,
@@ -122,7 +136,7 @@ function App() {
       }));
       exportToCSV('JA_Staff_Attendance_Report.csv', data);
     } else if (activeTab === 'visits') {
-      const data = visits.map(v => ({
+      const data = filteredTableVisits.map(v => ({
         'Staff Member': getStaffName(v.staff_id),
         'Shop Name': v.shop_name,
         'Time IN': formatDate(v.time_in),
@@ -296,6 +310,27 @@ function App() {
           </button>
         </div>
 
+        {(activeTab === 'attendance' || activeTab === 'visits') && (
+          <div className="filters-row">
+            <span style={{color: 'var(--text-muted)', fontWeight: 600}}>Filters:</span>
+            <select value={filterStaff} onChange={e => setFilterStaff(e.target.value)} className="glass-input select">
+              <option value="ALL">All Staff Members</option>
+              {staffList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <input 
+              type="date" 
+              value={filterDate} 
+              onChange={e => setFilterDate(e.target.value)} 
+              className="glass-input" 
+            />
+            {(filterStaff !== 'ALL' || filterDate !== '') && (
+              <button onClick={() => { setFilterStaff('ALL'); setFilterDate(''); }} className="clear-btn">
+                ✕ Clear
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="table-container">
           {activeTab === 'analytics' && (
             <div className="analytics-wrapper">
@@ -390,10 +425,10 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {attendance.length === 0 ? (
-                  <tr><td colSpan="5" style={{textAlign: 'center', padding: '40px'}}>No logs found</td></tr>
+                {filteredTableAttendance.length === 0 ? (
+                  <tr><td colSpan="5" style={{textAlign: 'center', padding: '40px'}}>No logs found for the selected filters</td></tr>
                 ) : (
-                  attendance.map(log => (
+                  filteredTableAttendance.map(log => (
                     <tr key={log.id}>
                       <td>{formatDate(log.timestamp)}</td>
                       <td style={{fontWeight: 600}}>{getStaffName(log.staff_id)}</td>
@@ -420,10 +455,10 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {visits.length === 0 ? (
-                  <tr><td colSpan="6" style={{textAlign: 'center', padding: '40px'}}>No visits found</td></tr>
+                {filteredTableVisits.length === 0 ? (
+                  <tr><td colSpan="6" style={{textAlign: 'center', padding: '40px'}}>No visits found for the selected filters</td></tr>
                 ) : (
-                  visits.map(visit => (
+                  filteredTableVisits.map(visit => (
                     <tr key={visit.id}>
                       <td style={{fontWeight: 600}}>{getStaffName(visit.staff_id)}</td>
                       <td>{visit.shop_name}</td>
