@@ -39,6 +39,8 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 function App() {
   const [activeTab, setActiveTab] = useState('analytics');
+  const [analyticsMode, setAnalyticsMode] = useState('cumulative');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -135,13 +137,23 @@ function App() {
   };
 
   // Analytics Calculations
+  const filteredVisits = useMemo(() => {
+    if (analyticsMode === 'cumulative') return visits;
+    return visits.filter(v => v.time_in && new Date(v.time_in).toISOString().split('T')[0] === selectedDate);
+  }, [visits, analyticsMode, selectedDate]);
+
+  const filteredAttendance = useMemo(() => {
+    if (analyticsMode === 'cumulative') return attendance;
+    return attendance.filter(a => a.timestamp && new Date(a.timestamp).toISOString().split('T')[0] === selectedDate);
+  }, [attendance, analyticsMode, selectedDate]);
+
   const staffStats = useMemo(() => {
     const stats = {};
     staffList.forEach(s => {
       stats[s.id] = { name: s.name, workHours: 0, visitHours: 0, visitCount: 0 };
     });
 
-    visits.forEach(v => {
+    filteredVisits.forEach(v => {
       if (stats[v.staff_id]) {
         stats[v.staff_id].visitCount += 1;
         if (v.time_in && v.time_out) {
@@ -153,7 +165,7 @@ function App() {
     });
 
     const attByStaffDate = {};
-    attendance.forEach(a => {
+    filteredAttendance.forEach(a => {
       const dateKey = new Date(a.timestamp).toLocaleDateString();
       const key = `${a.staff_id}_${dateKey}`;
       if (!attByStaffDate[key]) attByStaffDate[key] = { staffId: a.staff_id, in: null, out: null };
@@ -179,18 +191,18 @@ function App() {
       'Total Visit Hours': parseFloat(s.visitHours.toFixed(1)),
       'Shop Visits': s.visitCount
     })).sort((a, b) => b['Total Work Hours'] - a['Total Work Hours']);
-  }, [staffList, attendance, visits]);
+  }, [staffList, filteredAttendance, filteredVisits]);
 
   const activityData = useMemo(() => {
     const counts = { 'WORK_IN': 0, 'LEAVE': 0 };
-    attendance.forEach(a => {
+    filteredAttendance.forEach(a => {
       if (a.type === 'WORK_IN' || a.type === 'LEAVE') counts[a.type]++;
     });
     return [
       { name: 'Worked Days', value: counts['WORK_IN'] },
       { name: 'Leaves', value: counts['LEAVE'] }
     ];
-  }, [attendance]);
+  }, [filteredAttendance]);
 
 
   const MapLink = ({ lat, lng }) => {
@@ -286,9 +298,30 @@ function App() {
 
         <div className="table-container">
           {activeTab === 'analytics' && (
-            <div className="analytics-grid">
-              
-              <div className="chart-container">
+            <div className="analytics-wrapper">
+              <div className="analytics-controls">
+                <select 
+                  value={analyticsMode} 
+                  onChange={e => setAnalyticsMode(e.target.value)} 
+                  className="glass-input select"
+                >
+                  <option value="cumulative">Cumulative Analysis (All Time)</option>
+                  <option value="daily">Daily Analysis</option>
+                </select>
+
+                {analyticsMode === 'daily' && (
+                  <input 
+                    type="date" 
+                    value={selectedDate} 
+                    onChange={e => setSelectedDate(e.target.value)} 
+                    className="glass-input"
+                  />
+                )}
+              </div>
+
+              <div className="analytics-grid">
+                
+                <div className="chart-container">
                 <h3 className="chart-title">Staff Performance (Hours)</h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={staffStats}>
@@ -341,6 +374,7 @@ function App() {
                 </ResponsiveContainer>
               </div>
 
+            </div>
             </div>
           )}
 
