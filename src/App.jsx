@@ -121,9 +121,9 @@ function App() {
   };
 
   const formatDuration = (timeIn, timeOut) => {
-    if (!timeIn || !timeOut) return '-';
+    if (!timeIn) return '-';
     const t1 = new Date(timeIn).getTime();
-    const t2 = new Date(timeOut).getTime();
+    const t2 = timeOut ? new Date(timeOut).getTime() : new Date().getTime();
     const diffMins = Math.floor((t2 - t1) / (1000 * 60));
     if (diffMins < 0) return '-';
     const hours = Math.floor(diffMins / 60);
@@ -246,6 +246,21 @@ function App() {
     ];
   }, [filteredAttendance]);
 
+  const LiveDuration = ({ timeIn, timeOut }) => {
+    const [, setTick] = useState(0);
+
+    useEffect(() => {
+      if (timeOut) return;
+      const interval = setInterval(() => setTick(t => t + 1), 60000);
+      return () => clearInterval(interval);
+    }, [timeOut]);
+
+    const formatted = formatDuration(timeIn, timeOut);
+    if (!timeOut) {
+      return <span className="live-timer" style={{color: 'var(--primary-color)', fontWeight: '600'}}>{formatted} (Ongoing)</span>;
+    }
+    return <span style={{fontWeight: 500, color: 'var(--warning)'}}>{formatted}</span>;
+  };
 
   const MapLink = ({ lat, lng }) => {
     const [address, setAddress] = useState('');
@@ -567,7 +582,7 @@ function App() {
                       <td>{visit.shop_name}</td>
                       <td>{formatDate(visit.time_in)}</td>
                       <td>{visit.time_out ? formatDate(visit.time_out) : <span className="badge visit">Ongoing</span>}</td>
-                      <td><span style={{fontWeight: 500, color: 'var(--warning)'}}>{formatDuration(visit.time_in, visit.time_out)}</span></td>
+                      <td><LiveDuration timeIn={visit.time_in} timeOut={visit.time_out} /></td>
                       <td><MapLink lat={visit.lat_in} lng={visit.lng_in} /></td>
                       <td><MapLink lat={visit.lat_out} lng={visit.lng_out} /></td>
                     </tr>

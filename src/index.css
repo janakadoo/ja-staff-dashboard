@@ -404,6 +404,16 @@ tbody tr:hover {
   to { transform: rotate(360deg); }
 }
 
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.live-timer {
+  animation: pulse 2s infinite;
+}
+
 .footer {
   text-align: center;
   margin-top: 60px;
