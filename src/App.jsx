@@ -42,6 +42,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('analytics');
   const [analyticsMode, setAnalyticsMode] = useState('monthly');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [summaryDate, setSummaryDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filterStaff, setFilterStaff] = useState('ALL');
   const [filterFromDate, setFilterFromDate] = useState(new Date().toISOString().split('T')[0]);
@@ -132,6 +133,61 @@ function App() {
     return `${hours} hrs ${mins} mins`;
   };
 
+  const formatHoursToText = (hoursFloat) => {
+    if (!hoursFloat) return '-';
+    const totalMins = Math.round(hoursFloat * 60);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    if (h === 0) return `${m} mins`;
+    return `${h} hrs ${m} mins`;
+  };
+
+  const dailySummaryData = useMemo(() => {
+    const stats = {};
+    staffList.forEach(s => {
+      stats[s.id] = { name: s.name, workHours: 0, visitHours: 0, visitCount: 0 };
+    });
+
+    const dayVisits = visits.filter(v => v.time_in && new Date(v.time_in).toISOString().split('T')[0] === summaryDate);
+    dayVisits.forEach(v => {
+      if (stats[v.staff_id]) {
+        stats[v.staff_id].visitCount += 1;
+        if (v.time_in && v.time_out) {
+          const t1 = new Date(v.time_in).getTime();
+          const t2 = new Date(v.time_out).getTime();
+          stats[v.staff_id].visitHours += (t2 - t1) / (1000 * 60 * 60);
+        }
+      }
+    });
+
+    const dayAtt = attendance.filter(a => a.timestamp && new Date(a.timestamp).toISOString().split('T')[0] === summaryDate);
+    const attByStaff = {};
+    dayAtt.forEach(a => {
+      if (!attByStaff[a.staff_id]) attByStaff[a.staff_id] = { in: null, out: null };
+      const d = new Date(a.timestamp);
+      if (a.type === 'WORK_IN') {
+        if (!attByStaff[a.staff_id].in || d < attByStaff[a.staff_id].in) attByStaff[a.staff_id].in = d;
+      } else if (a.type === 'WORK_OUT') {
+        if (!attByStaff[a.staff_id].out || d > attByStaff[a.staff_id].out) attByStaff[a.staff_id].out = d;
+      }
+    });
+
+    Object.keys(attByStaff).forEach(staffId => {
+      const day = attByStaff[staffId];
+      if (day.in && day.out && stats[staffId]) {
+        const diff = (day.out.getTime() - day.in.getTime()) / (1000 * 60 * 60);
+        stats[staffId].workHours += diff;
+      }
+    });
+
+    return Object.values(stats).map(s => ({
+      name: s.name,
+      workHours: s.workHours,
+      visitHours: s.visitHours,
+      visitCount: s.visitCount
+    })).sort((a, b) => b.workHours - a.workHours);
+  }, [staffList, attendance, visits, summaryDate]);
+
   const filteredTableAttendance = attendance.filter(log => {
     const matchStaff = filterStaff === 'ALL' || log.staff_id === filterStaff;
     if (!log.timestamp) return false;
@@ -169,6 +225,15 @@ function App() {
         'Map OUT': v.lat_out ? `https://www.google.com/maps/search/?api=1&query=${v.lat_out},${v.lng_out}` : ''
       }));
       exportToCSV('JA_Staff_Visits_Report.csv', data);
+    } else if (activeTab === 'daily_summary') {
+      const data = dailySummaryData.map(s => ({
+        'Date': summaryDate,
+        'Staff Member': s.name,
+        'Shops Visited': s.visitCount,
+        'Total Visit Duration': formatHoursToText(s.visitHours),
+        'Total Work Time': formatHoursToText(s.workHours)
+      }));
+      exportToCSV(`JA_Daily_Staff_Summary_${summaryDate}.csv`, data);
     } else {
       exportToCSV('JA_Staff_Analytics_Summary.csv', staffStats);
     }
@@ -383,6 +448,12 @@ function App() {
               📊 Analytics
             </button>
             <button 
+              className={`tab-button ${activeTab === 'daily_summary' ? 'active' : ''}`}
+              onClick={() => setActiveTab('daily_summary')}
+            >
+              📋 Daily Summary
+            </button>
+            <button 
               className={`tab-button ${activeTab === 'attendance' ? 'active' : ''}`}
               onClick={() => setActiveTab('attendance')}
             >
@@ -399,6 +470,18 @@ function App() {
             📥 Download CSV Report
           </button>
         </div>
+
+        {activeTab === 'daily_summary' && (
+          <div className="filters-row">
+            <span style={{color: 'var(--text-muted)', fontWeight: 600}}>Select Date:</span>
+            <input 
+              type="date" 
+              value={summaryDate} 
+              onChange={e => setSummaryDate(e.target.value)} 
+              className="glass-input" 
+            />
+          </div>
+        )}
 
         {(activeTab === 'attendance' || activeTab === 'visits') && (
           <div className="filters-row">
@@ -585,6 +668,35 @@ function App() {
                       <td><LiveDuration timeIn={visit.time_in} timeOut={visit.time_out} /></td>
                       <td><MapLink lat={visit.lat_in} lng={visit.lng_in} /></td>
                       <td><MapLink lat={visit.lat_out} lng={visit.lng_out} /></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {activeTab === 'daily_summary' && (
+            <table>
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Date</th>
+                  <th>Shops Visited</th>
+                  <th>Total Visit Duration</th>
+                  <th>Total Work Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailySummaryData.length === 0 ? (
+                  <tr><td colSpan="5" style={{textAlign: 'center', padding: '40px'}}>No records found for {summaryDate}</td></tr>
+                ) : (
+                  dailySummaryData.map((s, idx) => (
+                    <tr key={idx}>
+                      <td style={{fontWeight: 600}}>{s.name}</td>
+                      <td>{summaryDate}</td>
+                      <td><span className="badge visit" style={{fontSize: '1rem'}}>{s.visitCount}</span></td>
+                      <td><span style={{color: 'var(--warning)', fontWeight: 500}}>{formatHoursToText(s.visitHours)}</span></td>
+                      <td><span style={{color: 'var(--success)', fontWeight: 500}}>{formatHoursToText(s.workHours)}</span></td>
                     </tr>
                   ))
                 )}
