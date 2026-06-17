@@ -36,6 +36,7 @@ const exportToCSV = (filename, rows) => {
 };
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const addressCache = {};
 
 function App() {
   const [activeTab, setActiveTab] = useState('analytics');
@@ -247,12 +248,42 @@ function App() {
 
 
   const MapLink = ({ lat, lng }) => {
+    const [address, setAddress] = useState('');
+
+    useEffect(() => {
+      if (!lat || !lng) return;
+      const key = `${parseFloat(lat).toFixed(4)},${parseFloat(lng).toFixed(4)}`;
+      if (addressCache[key]) {
+        setAddress(addressCache[key]);
+        return;
+      }
+
+      fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`)
+        .then(res => res.json())
+        .then(data => {
+          let addrParts = [];
+          if (data.locality) addrParts.push(data.locality);
+          else if (data.city) addrParts.push(data.city);
+          if (data.principalSubdivision) addrParts.push(data.principalSubdivision);
+          
+          const formatted = addrParts.join(', ');
+          if (formatted) {
+            addressCache[key] = formatted;
+            setAddress(formatted);
+          }
+        })
+        .catch(e => console.error(e));
+    }, [lat, lng]);
+
     if (!lat || !lng) return <span>-</span>;
     const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
     return (
-      <a href={url} target="_blank" rel="noreferrer" className="map-link">
-        📍 View Map
-      </a>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <a href={url} target="_blank" rel="noreferrer" className="map-link">
+          📍 View Map
+        </a>
+        {address && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{address}</span>}
+      </div>
     );
   };
 
