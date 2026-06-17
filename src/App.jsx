@@ -42,7 +42,9 @@ function App() {
   const [activeTab, setActiveTab] = useState('analytics');
   const [analyticsMode, setAnalyticsMode] = useState('monthly');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [summaryMode, setSummaryMode] = useState('daily');
   const [summaryDate, setSummaryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [summaryMonth, setSummaryMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filterStaff, setFilterStaff] = useState('ALL');
   const [filterFromDate, setFilterFromDate] = useState(new Date().toISOString().split('T')[0]);
@@ -142,14 +144,17 @@ function App() {
     return `${h} hrs ${m} mins`;
   };
 
-  const dailySummaryData = useMemo(() => {
+  const staffSummaryData = useMemo(() => {
     const stats = {};
     staffList.forEach(s => {
       stats[s.id] = { name: s.name, workHours: 0, visitHours: 0, visitCount: 0 };
     });
 
-    const dayVisits = visits.filter(v => v.time_in && new Date(v.time_in).toISOString().split('T')[0] === summaryDate);
-    dayVisits.forEach(v => {
+    const isDaily = summaryMode === 'daily';
+    const filterPrefix = isDaily ? summaryDate : summaryMonth;
+
+    const filteredVisits = visits.filter(v => v.time_in && new Date(v.time_in).toISOString().startsWith(filterPrefix));
+    filteredVisits.forEach(v => {
       if (stats[v.staff_id]) {
         stats[v.staff_id].visitCount += 1;
         if (v.time_in && v.time_out) {
@@ -160,23 +165,25 @@ function App() {
       }
     });
 
-    const dayAtt = attendance.filter(a => a.timestamp && new Date(a.timestamp).toISOString().split('T')[0] === summaryDate);
-    const attByStaff = {};
-    dayAtt.forEach(a => {
-      if (!attByStaff[a.staff_id]) attByStaff[a.staff_id] = { in: null, out: null };
+    const filteredAtt = attendance.filter(a => a.timestamp && new Date(a.timestamp).toISOString().startsWith(filterPrefix));
+    const attByStaffDate = {};
+    filteredAtt.forEach(a => {
+      const dateKey = new Date(a.timestamp).toISOString().split('T')[0];
+      const key = `${a.staff_id}_${dateKey}`;
+      if (!attByStaffDate[key]) attByStaffDate[key] = { staffId: a.staff_id, in: null, out: null };
+      
       const d = new Date(a.timestamp);
       if (a.type === 'WORK_IN') {
-        if (!attByStaff[a.staff_id].in || d < attByStaff[a.staff_id].in) attByStaff[a.staff_id].in = d;
+        if (!attByStaffDate[key].in || d < attByStaffDate[key].in) attByStaffDate[key].in = d;
       } else if (a.type === 'WORK_OUT') {
-        if (!attByStaff[a.staff_id].out || d > attByStaff[a.staff_id].out) attByStaff[a.staff_id].out = d;
+        if (!attByStaffDate[key].out || d > attByStaffDate[key].out) attByStaffDate[key].out = d;
       }
     });
 
-    Object.keys(attByStaff).forEach(staffId => {
-      const day = attByStaff[staffId];
-      if (day.in && day.out && stats[staffId]) {
+    Object.values(attByStaffDate).forEach(day => {
+      if (day.in && day.out && stats[day.staffId]) {
         const diff = (day.out.getTime() - day.in.getTime()) / (1000 * 60 * 60);
-        stats[staffId].workHours += diff;
+        stats[day.staffId].workHours += diff;
       }
     });
 
@@ -186,7 +193,7 @@ function App() {
       visitHours: s.visitHours,
       visitCount: s.visitCount
     })).sort((a, b) => b.workHours - a.workHours);
-  }, [staffList, attendance, visits, summaryDate]);
+  }, [staffList, attendance, visits, summaryMode, summaryDate, summaryMonth]);
 
   const filteredTableAttendance = attendance.filter(log => {
     const matchStaff = filterStaff === 'ALL' || log.staff_id === filterStaff;
@@ -226,14 +233,14 @@ function App() {
       }));
       exportToCSV('JA_Staff_Visits_Report.csv', data);
     } else if (activeTab === 'daily_summary') {
-      const data = dailySummaryData.map(s => ({
-        'Date': summaryDate,
+      const data = staffSummaryData.map(s => ({
+        [summaryMode === 'daily' ? 'Date' : 'Month']: summaryMode === 'daily' ? summaryDate : summaryMonth,
         'Staff Member': s.name,
         'Shops Visited': s.visitCount,
         'Total Visit Duration': formatHoursToText(s.visitHours),
         'Total Work Time': formatHoursToText(s.workHours)
       }));
-      exportToCSV(`JA_Daily_Staff_Summary_${summaryDate}.csv`, data);
+      exportToCSV(`JA_Staff_Summary_${summaryMode === 'daily' ? summaryDate : summaryMonth}.csv`, data);
     } else {
       exportToCSV('JA_Staff_Analytics_Summary.csv', staffStats);
     }
@@ -451,7 +458,7 @@ function App() {
               className={`tab-button ${activeTab === 'daily_summary' ? 'active' : ''}`}
               onClick={() => setActiveTab('daily_summary')}
             >
-              📋 Daily Summary
+              📋 Staff Summary
             </button>
             <button 
               className={`tab-button ${activeTab === 'attendance' ? 'active' : ''}`}
@@ -473,13 +480,28 @@ function App() {
 
         {activeTab === 'daily_summary' && (
           <div className="filters-row">
-            <span style={{color: 'var(--text-muted)', fontWeight: 600}}>Select Date:</span>
-            <input 
-              type="date" 
-              value={summaryDate} 
-              onChange={e => setSummaryDate(e.target.value)} 
-              className="glass-input" 
-            />
+            <span style={{color: 'var(--text-muted)', fontWeight: 600}}>Mode:</span>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select className="glass-input select" value={summaryMode} onChange={e => setSummaryMode(e.target.value)}>
+                <option value="daily">Daily</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              {summaryMode === 'daily' ? (
+                <input 
+                  type="date" 
+                  value={summaryDate} 
+                  onChange={e => setSummaryDate(e.target.value)} 
+                  className="glass-input" 
+                />
+              ) : (
+                <input 
+                  type="month" 
+                  value={summaryMonth} 
+                  onChange={e => setSummaryMonth(e.target.value)} 
+                  className="glass-input" 
+                />
+              )}
+            </div>
           </div>
         )}
 
@@ -680,20 +702,20 @@ function App() {
               <thead>
                 <tr>
                   <th>Staff Member</th>
-                  <th>Date</th>
+                  <th>{summaryMode === 'daily' ? 'Date' : 'Month'}</th>
                   <th>Shops Visited</th>
                   <th>Total Visit Duration</th>
                   <th>Total Work Time</th>
                 </tr>
               </thead>
               <tbody>
-                {dailySummaryData.length === 0 ? (
-                  <tr><td colSpan="5" style={{textAlign: 'center', padding: '40px'}}>No records found for {summaryDate}</td></tr>
+                {staffSummaryData.length === 0 ? (
+                  <tr><td colSpan="5" style={{textAlign: 'center', padding: '40px'}}>No records found for {summaryMode === 'daily' ? summaryDate : summaryMonth}</td></tr>
                 ) : (
-                  dailySummaryData.map((s, idx) => (
+                  staffSummaryData.map((s, idx) => (
                     <tr key={idx}>
                       <td style={{fontWeight: 600}}>{s.name}</td>
-                      <td>{summaryDate}</td>
+                      <td>{summaryMode === 'daily' ? summaryDate : summaryMonth}</td>
                       <td><span className="badge visit" style={{fontSize: '1rem'}}>{s.visitCount}</span></td>
                       <td><span style={{color: 'var(--warning)', fontWeight: 500}}>{formatHoursToText(s.visitHours)}</span></td>
                       <td><span style={{color: 'var(--success)', fontWeight: 500}}>{formatHoursToText(s.workHours)}</span></td>
