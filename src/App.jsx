@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from './supabase';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, ComposedChart
 } from 'recharts';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import './index.css';
 
@@ -601,7 +601,7 @@ function App() {
                     <XAxis dataKey="Staff Name" stroke="#94a3b8" />
                     <YAxis yAxisId="left" stroke="#94a3b8" />
                     <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" />
-                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
+                    <RechartsTooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
                     <Legend />
                     <Bar yAxisId="left" dataKey="Total Work Hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     <Bar yAxisId="left" dataKey="Total Visit Hours" fill="#10b981" radius={[4, 4, 0, 0]} />
@@ -628,7 +628,7 @@ function App() {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
+                    <RechartsTooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -641,7 +641,7 @@ function App() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff22" />
                     <XAxis dataKey="Staff Name" stroke="#94a3b8" />
                     <YAxis stroke="#94a3b8" />
-                    <Tooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
+                    <RechartsTooltip contentStyle={{backgroundColor: '#1e293b', border: 'none', borderRadius: '8px'}} />
                     <Legend />
                     <Line type="monotone" dataKey="Visited Shops" stroke="#f59e0b" strokeWidth={3} dot={{ r: 6 }} />
                   </LineChart>
@@ -754,14 +754,13 @@ function App() {
                   if (!v.lat_in || !v.lng_in) return null;
                   return (
                     <Marker key={v.id} position={[v.lat_in, v.lng_in]}>
-                      <Popup>
-                        <div style={{ padding: '4px', textAlign: 'center' }}>
-                          <h4 style={{ margin: '0 0 4px 0', color: 'var(--primary-color)' }}>{getStaffName(v.staff_id)}</h4>
-                          <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>📍 {v.shop_name}</p>
-                          <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>IN: {formatDate(v.time_in)}</p>
-                          <div style={{ fontSize: '0.85rem' }}>Duration: <LiveDuration timeIn={v.time_in} timeOut={v.time_out} /></div>
+                      <Tooltip permanent direction="top" offset={[0, -20]} className="map-live-tooltip">
+                        <div style={{ padding: '2px', textAlign: 'center', lineHeight: '1.2' }}>
+                          <h4 style={{ margin: '0 0 4px 0', color: 'var(--primary-color)', fontSize: '0.9rem' }}>{getStaffName(v.staff_id)}</h4>
+                          <p style={{ margin: '0 0 2px 0', fontWeight: 'bold', fontSize: '0.8rem' }}>{v.shop_name}</p>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--warning)' }}><LiveDuration timeIn={v.time_in} timeOut={v.time_out} /></div>
                         </div>
-                      </Popup>
+                      </Tooltip>
                     </Marker>
                   );
                 })}
