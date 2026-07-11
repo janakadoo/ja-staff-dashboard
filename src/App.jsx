@@ -4,7 +4,17 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, ComposedChart
 } from 'recharts';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
 import './index.css';
+
+// Fix for Leaflet's default icon missing issue in React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 const exportToCSV = (filename, rows) => {
   if (!rows || !rows.length) return;
@@ -114,7 +124,8 @@ function App() {
   const presentStaffNames = staffList.filter(s => presentStaffIds.has(s.id));
   const absentStaffNames = staffList.filter(s => !presentStaffIds.has(s.id));
 
-  const activeVisits = visits.filter(v => !v.time_out).length;
+  const activeVisitsList = visits.filter(v => !v.time_out);
+  const activeVisits = activeVisitsList.length;
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -472,6 +483,12 @@ function App() {
             >
               Visit Logs
             </button>
+            <button 
+              className={`tab-button ${activeTab === 'map' ? 'active' : ''}`}
+              onClick={() => setActiveTab('map')}
+            >
+              🗺️ Live Map
+            </button>
           </div>
           <button className="export-btn" onClick={handleExport}>
             📥 Download CSV Report
@@ -724,6 +741,37 @@ function App() {
                 )}
               </tbody>
             </table>
+          )}
+
+          {activeTab === 'map' && (
+            <div className="map-wrapper">
+              <MapContainer center={[7.8731, 80.7718]} zoom={7} scrollWheelZoom={true} style={{ height: '600px', width: '100%', borderRadius: '12px' }}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {activeVisitsList.map(v => {
+                  if (!v.lat_in || !v.lng_in) return null;
+                  return (
+                    <Marker key={v.id} position={[v.lat_in, v.lng_in]}>
+                      <Popup>
+                        <div style={{ padding: '4px', textAlign: 'center' }}>
+                          <h4 style={{ margin: '0 0 4px 0', color: 'var(--primary-color)' }}>{getStaffName(v.staff_id)}</h4>
+                          <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>📍 {v.shop_name}</p>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem' }}>IN: {formatDate(v.time_in)}</p>
+                          <div style={{ fontSize: '0.85rem' }}>Duration: <LiveDuration timeIn={v.time_in} timeOut={v.time_out} /></div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MapContainer>
+              {activeVisitsList.length === 0 && (
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(255,255,255,0.9)', padding: '12px 24px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1000, fontWeight: 'bold', color: 'var(--text-color)' }}>
+                  No active visits right now.
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
