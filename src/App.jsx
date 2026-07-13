@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, ComposedChart
 } from 'recharts';
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import './index.css';
 
@@ -47,6 +47,17 @@ const exportToCSV = (filename, rows) => {
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 const addressCache = {};
+
+// Map Resizer component to fix Leaflet rendering on resize
+function MapResizer({ isFullScreen }) {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100); // small delay to allow container CSS to apply
+  }, [isFullScreen, map]);
+  return null;
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState('analytics');
@@ -756,6 +767,7 @@ function App() {
                 {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
               </button>
               <MapContainer center={[7.8731, 80.7718]} zoom={7} scrollWheelZoom={true} style={{ height: '600px', width: '100%', borderRadius: '12px' }}>
+                <MapResizer isFullScreen={isFullScreen} />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
