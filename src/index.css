@@ -488,3 +488,40 @@ tbody tr:hover {
     flex-direction: column;
   }
 }
+
+.map-wrapper.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: var(--bg-color);
+  border-radius: 0;
+}
+
+.map-wrapper.fullscreen .leaflet-container {
+  height: 100vh !important;
+  width: 100vw !important;
+  border-radius: 0 !important;
+}
+
+.fullscreen-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: white;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #333;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+  transition: background 0.2s;
+}
+
+.fullscreen-btn:hover {
+  background: #f4f4f4;
+}

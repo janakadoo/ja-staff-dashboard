@@ -59,6 +59,9 @@ function App() {
   const [filterStaff, setFilterStaff] = useState('ALL');
   const [filterFromDate, setFilterFromDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterToDate, setFilterToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateTo, setDateTo] = useState(new Date());
+  const [selectedStaff, setSelectedStaff] = useState('');
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -744,7 +747,14 @@ function App() {
           )}
 
           {activeTab === 'map' && (
-            <div className="map-wrapper">
+            <div className={`map-wrapper ${isFullScreen ? 'fullscreen' : ''}`}>
+              <button 
+                className="fullscreen-btn" 
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                title="Toggle Full Screen"
+              >
+                {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
+              </button>
               <MapContainer center={[7.8731, 80.7718]} zoom={7} scrollWheelZoom={true} style={{ height: '600px', width: '100%', borderRadius: '12px' }}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
