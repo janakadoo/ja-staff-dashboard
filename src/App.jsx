@@ -81,23 +81,21 @@ function App() {
   useEffect(() => {
     fetchData();
 
-    // Setup Realtime subscriptions
-    const staffSub = supabase.channel('public:staff')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, fetchData)
-      .subscribe();
-      
-    const attSub = supabase.channel('public:attendance')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, fetchData)
-      .subscribe();
-      
-    const visitsSub = supabase.channel('public:visits')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'visits' }, fetchData)
+    // Setup Realtime subscriptions (Single channel for better performance)
+    const channel = supabase.channel('db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'visits' }, () => fetchData())
       .subscribe();
 
+    // Polling fallback to ensure map and dashboard always stays fresh (every 15s)
+    const intervalId = setInterval(() => {
+      fetchData();
+    }, 15000);
+
     return () => {
-      supabase.removeChannel(staffSub);
-      supabase.removeChannel(attSub);
-      supabase.removeChannel(visitsSub);
+      supabase.removeChannel(channel);
+      clearInterval(intervalId);
     };
   }, []);
 
