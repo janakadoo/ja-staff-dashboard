@@ -368,18 +368,19 @@ function App() {
         return;
       }
 
-      fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`)
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`)
         .then(res => res.json())
         .then(data => {
-          let addrParts = [];
-          if (data.locality) addrParts.push(data.locality);
-          else if (data.city) addrParts.push(data.city);
-          if (data.principalSubdivision) addrParts.push(data.principalSubdivision);
-          
-          const formatted = addrParts.join(', ');
-          if (formatted) {
-            addressCache[key] = formatted;
-            setAddress(formatted);
+          if (data && data.address) {
+            const a = data.address;
+            const town = a.city || a.town || a.village || a.suburb || a.county || '';
+            if (town) {
+              addressCache[key] = town;
+              setAddress(town);
+            } else {
+              addressCache[key] = 'Unknown Location';
+              setAddress('Unknown Location');
+            }
           }
         })
         .catch(e => console.error(e));
