@@ -148,8 +148,14 @@ function App() {
   const activeVisitsList = visits.filter(v => !v.time_out);
   const activeStaffIds = new Set(activeVisitsList.map(v => v.staff_id));
   
+  const todayPrefix = new Date().toISOString().split('T')[0];
   const completedVisitsByStaff = {};
-  visits.filter(v => v.time_out && !activeStaffIds.has(v.staff_id)).forEach(v => {
+  
+  visits.filter(v => 
+    v.time_out && 
+    !activeStaffIds.has(v.staff_id) &&
+    v.time_in && v.time_in.startsWith(todayPrefix)
+  ).forEach(v => {
     if (!completedVisitsByStaff[v.staff_id]) {
       completedVisitsByStaff[v.staff_id] = v;
     } else {
