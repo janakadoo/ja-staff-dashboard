@@ -16,6 +16,15 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+const grayIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 const exportToCSV = (filename, rows) => {
   if (!rows || !rows.length) return;
   const separator = ',';
@@ -137,6 +146,20 @@ function App() {
   const absentStaffNames = staffList.filter(s => !presentStaffIds.has(s.id));
 
   const activeVisitsList = visits.filter(v => !v.time_out);
+  const activeStaffIds = new Set(activeVisitsList.map(v => v.staff_id));
+  
+  const completedVisitsByStaff = {};
+  visits.filter(v => v.time_out && !activeStaffIds.has(v.staff_id)).forEach(v => {
+    if (!completedVisitsByStaff[v.staff_id]) {
+      completedVisitsByStaff[v.staff_id] = v;
+    } else {
+      if (new Date(v.time_out) > new Date(completedVisitsByStaff[v.staff_id].time_out)) {
+        completedVisitsByStaff[v.staff_id] = v;
+      }
+    }
+  });
+  const lastSeenVisitsList = Object.values(completedVisitsByStaff);
+  
   const activeVisits = activeVisitsList.length;
 
   const formatDate = (dateString) => {
@@ -785,10 +808,26 @@ function App() {
                     </Marker>
                   );
                 })}
+                {lastSeenVisitsList.map(v => {
+                  const lat = v.lat_out || v.lat_in;
+                  const lng = v.lng_out || v.lng_in;
+                  if (!lat || !lng) return null;
+                  return (
+                    <Marker key={`last-${v.id}`} position={[lat, lng]} icon={grayIcon}>
+                      <Tooltip permanent direction="top" offset={[0, -20]} className="map-live-tooltip" opacity={0.8}>
+                        <div style={{ padding: '2px', textAlign: 'center', lineHeight: '1.2' }}>
+                          <h4 style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '0.9rem' }}>{getStaffName(v.staff_id)} (Offline)</h4>
+                          <p style={{ margin: '0 0 2px 0', fontWeight: 'bold', fontSize: '0.8rem', color: '#94a3b8' }}>{v.shop_name}</p>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>Last Visit: <LiveDuration timeIn={v.time_in} timeOut={v.time_out} /></div>
+                        </div>
+                      </Tooltip>
+                    </Marker>
+                  );
+                })}
               </MapContainer>
-              {activeVisitsList.length === 0 && (
+              {(activeVisitsList.length === 0 && lastSeenVisitsList.length === 0) && (
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(255,255,255,0.9)', padding: '12px 24px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1000, fontWeight: 'bold', color: 'var(--text-color)' }}>
-                  No active visits right now.
+                  No active or recent visits right now.
                 </div>
               )}
             </div>
