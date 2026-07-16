@@ -832,7 +832,7 @@ function App() {
                 })}
               </MapContainer>
               {(activeVisitsList.length === 0 && lastSeenVisitsList.length === 0) && (
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(255,255,255,0.9)', padding: '12px 24px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1000, fontWeight: 'bold', color: 'var(--text-color)' }}>
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(255,255,255,0.9)', padding: '12px 24px', borderRadius: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 1000, fontWeight: 'bold', color: '#333' }}>
                   No active or recent visits right now.
                 </div>
               )}
