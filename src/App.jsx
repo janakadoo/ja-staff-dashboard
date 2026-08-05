@@ -63,6 +63,63 @@ const exportToCSV = (filename, rows) => {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 const addressCache = {};
 
+// Global queue for geocoding to prevent API rate limits (1 req/sec for Nominatim)
+const geocodeQueue = [];
+let isGeocoding = false;
+
+const processGeocodeQueue = () => {
+  if (isGeocoding || geocodeQueue.length === 0) return;
+  isGeocoding = true;
+  
+  const { lat, lng, callback } = geocodeQueue.shift();
+  const key = `${parseFloat(lat).toFixed(4)},${parseFloat(lng).toFixed(4)}`;
+  
+  if (addressCache[key]) {
+    callback(addressCache[key]);
+    isGeocoding = false;
+    processGeocodeQueue();
+    return;
+  }
+
+  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`)
+    .then(res => {
+      if (!res.ok) throw new Error('Geocoding failed');
+      return res.json();
+    })
+    .then(data => {
+      if (data && data.address) {
+        const a = data.address;
+        const town = a.city || a.town || a.village || a.suburb || a.county || '';
+        if (town) {
+          addressCache[key] = town;
+          callback(town);
+        } else {
+          addressCache[key] = 'Unknown Location';
+          callback('Unknown Location');
+        }
+      } else {
+        addressCache[key] = 'Unknown Location';
+        callback('Unknown Location');
+      }
+    })
+    .catch(e => {
+      console.error(e);
+      // Don't cache errors so it can retry later if needed
+      callback('Error loading');
+    })
+    .finally(() => {
+      setTimeout(() => {
+        isGeocoding = false;
+        processGeocodeQueue();
+      }, 1100);
+    });
+};
+
+const queueGeocode = (lat, lng, callback) => {
+  geocodeQueue.push({ lat, lng, callback });
+  processGeocodeQueue();
+};
+
 // Map Resizer component to fix Leaflet rendering on resize
 function MapResizer({ isFullScreen }) {
   const map = useMap();
@@ -405,22 +462,10 @@ function App() {
         return;
       }
 
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.address) {
-            const a = data.address;
-            const town = a.city || a.town || a.village || a.suburb || a.county || '';
-            if (town) {
-              addressCache[key] = town;
-              setAddress(town);
-            } else {
-              addressCache[key] = 'Unknown Location';
-              setAddress('Unknown Location');
-            }
-          }
-        })
-        .catch(e => console.error(e));
+      setAddress('Loading...');
+      queueGeocode(lat, lng, (town) => {
+        setAddress(town);
+      });
     }, [lat, lng]);
 
     if (!lat || !lng) return <span>-</span>;
