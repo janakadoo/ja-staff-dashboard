@@ -61,7 +61,19 @@ const exportToCSV = (filename, rows) => {
 };
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-const addressCache = {};
+
+let addressCache = {};
+try {
+  const cached = localStorage.getItem('ja_address_cache');
+  if (cached) addressCache = JSON.parse(cached);
+} catch (e) { console.error(e); }
+
+const updateAddressCache = (key, value) => {
+  addressCache[key] = value;
+  try {
+    localStorage.setItem('ja_address_cache', JSON.stringify(addressCache));
+  } catch (e) { console.error(e); }
+};
 
 // Global queue for geocoding to prevent API rate limits (1 req/sec for Nominatim)
 const geocodeQueue = [];
@@ -91,14 +103,14 @@ const processGeocodeQueue = () => {
         const a = data.address;
         const town = a.city || a.town || a.village || a.suburb || a.county || '';
         if (town) {
-          addressCache[key] = town;
+          updateAddressCache(key, town);
           callback(town);
         } else {
-          addressCache[key] = 'Unknown Location';
+          updateAddressCache(key, 'Unknown Location');
           callback('Unknown Location');
         }
       } else {
-        addressCache[key] = 'Unknown Location';
+        updateAddressCache(key, 'Unknown Location');
         callback('Unknown Location');
       }
     })
@@ -111,7 +123,7 @@ const processGeocodeQueue = () => {
       setTimeout(() => {
         isGeocoding = false;
         processGeocodeQueue();
-      }, 1100);
+      }, 800);
     });
 };
 
