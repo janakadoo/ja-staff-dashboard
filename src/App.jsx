@@ -25,6 +25,12 @@ const grayIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+const getCachedAddress = (lat, lng) => {
+  if (!lat || !lng) return '';
+  const key = `${parseFloat(lat).toFixed(4)},${parseFloat(lng).toFixed(4)}`;
+  return addressCache[key] || '';
+};
+
 const exportToCSV = (filename, rows) => {
   if (!rows || !rows.length) return;
   const separator = ',';
@@ -281,7 +287,9 @@ function App() {
         'Time OUT': v.time_out ? formatDate(v.time_out) : 'Ongoing',
         'Duration': formatDuration(v.time_in, v.time_out),
         'Map IN': v.lat_in ? `https://www.google.com/maps/search/?api=1&query=${v.lat_in},${v.lng_in}` : '',
-        'Map OUT': v.lat_out ? `https://www.google.com/maps/search/?api=1&query=${v.lat_out},${v.lng_out}` : ''
+        'City IN': getCachedAddress(v.lat_in, v.lng_in),
+        'Map OUT': v.lat_out ? `https://www.google.com/maps/search/?api=1&query=${v.lat_out},${v.lng_out}` : '',
+        'City OUT': getCachedAddress(v.lat_out, v.lng_out)
       }));
       exportToCSV('JA_Staff_Visits_Report.csv', data);
     } else if (activeTab === 'daily_summary') {
